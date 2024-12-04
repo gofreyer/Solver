@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lineares Gleichungssystem lösen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #444;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .table-container {
+            margin-top: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #555;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lineares Gleichungssystem lösen</h1>
+        <label for="numVariables">Anzahl der Variablen:</label>
+        <input type="number" id="numVariables" min="1" max="5" value="3">
+        <button onclick="generateTable()">Matrix erstellen</button>
+
+        <div class="table-container" id="tableContainer"></div>
+        <button onclick="solveSystem()">Lösen</button>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        function generateTable() {
+            const numVariables = parseInt(document.getElementById("numVariables").value);
+            if (numVariables < 1 || numVariables > 5) {
+                alert("Die Anzahl der Variablen muss zwischen 1 und 5 liegen.");
+                return;
+            }
+
+            let html = '<table><thead><tr>';
+            for (let i = 0; i < numVariables; i++) {
+                html += `<th>x${i + 1}</th>`;
+            }
+            html += '<th>Ergebnis</th></tr></thead><tbody>';
+            for (let i = 0; i < numVariables; i++) {
+                html += '<tr>';
+                for (let j = 0; j <= numVariables; j++) {
+                    html += `<td><input type="number" step="any" id="cell-${i}-${j}" /></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            document.getElementById("tableContainer").innerHTML = html;
+            document.getElementById("results").innerHTML = '';
+        }
+
+        function solveSystem() {
+            const numVariables = parseInt(document.getElementById("numVariables").value);
+            const matrix = [];
+
+            // Lesen der Matrixwerte
+            for (let i = 0; i < numVariables; i++) {
+                const row = [];
+                for (let j = 0; j <= numVariables; j++) {
+                    const cellValue = parseFloat(document.getElementById(`cell-${i}-${j}`).value) || 0;
+                    row.push(cellValue);
+                }
+                matrix.push(row);
+            }
+
+            try {
+                const result = gaussianElimination(matrix, numVariables);
+                let resultHtml = '<h2>Lösung:</h2>';
+                for (let i = 0; i < result.length; i++) {
+                    resultHtml += `<p>x${i + 1} = ${result[i].toFixed(4)}</p>`;
+                }
+                document.getElementById("results").innerHTML = resultHtml;
+            } catch (error) {
+                document.getElementById("results").innerHTML = `<p class="error">${error.message}</p>`;
+            }
+        }
+
+        function gaussianElimination(matrix, numVariables) {
+            // Gauß-Elimination
+            for (let i = 0; i < numVariables; i++) {
+                // Pivotisieren
+                let maxRow = i;
+                for (let k = i + 1; k < numVariables; k++) {
+                    if (Math.abs(matrix[k][i]) > Math.abs(matrix[maxRow][i])) {
+                        maxRow = k;
+                    }
+                }
+                [matrix[i], matrix[maxRow]] = [matrix[maxRow], matrix[i]];
+
+                // Nullstellen erzeugen
+                for (let k = i + 1; k < numVariables; k++) {
+                    const factor = matrix[k][i] / matrix[i][i];
+                    for (let j = i; j <= numVariables; j++) {
+                        matrix[k][j] -= factor * matrix[i][j];
+                    }
+                }
+            }
+
+            // Rückwärtssubstitution
+            const result = new Array(numVariables).fill(0);
+            for (let i = numVariables - 1; i >= 0; i--) {
+                let sum = 0;
+                for (let j = i + 1; j < numVariables; j++) {
+                    sum += matrix[i][j] * result[j];
+                }
+                if (matrix[i][i] === 0) {
+                    throw new Error("Das Gleichungssystem hat keine eindeutige Lösung.");
+                }
+                result[i] = (matrix[i][numVariables] - sum) / matrix[i][i];
+            }
+            return result;
+        }
+    </script>
+</body>
+</html>
