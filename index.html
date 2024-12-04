@@ -117,11 +117,19 @@
 
             try {
                 const result = gaussianElimination(matrix, numVariables);
-                let resultHtml = '<h2>Lösung:</h2>';
-                for (let i = 0; i < result.length; i++) {
-                    resultHtml += `<p>x${i + 1} = ${result[i].toFixed(4)}</p>`;
+                if (result.status === "unique") {
+                    let resultHtml = '<h2>Eindeutige Lösung:</h2>';
+                    for (let i = 0; i < result.solution.length; i++) {
+                        resultHtml += `<p>x${i + 1} = ${result.solution[i].toFixed(4)}</p>`;
+                    }
+                    document.getElementById("results").innerHTML = resultHtml;
+                } else if (result.status === "infinite") {
+                    document.getElementById("results").innerHTML = 
+                        `<p class="error">Das Gleichungssystem hat unendlich viele Lösungen.</p>`;
+                } else {
+                    document.getElementById("results").innerHTML = 
+                        `<p class="error">Das Gleichungssystem ist nicht lösbar.</p>`;
                 }
-                document.getElementById("results").innerHTML = resultHtml;
             } catch (error) {
                 document.getElementById("results").innerHTML = `<p class="error">${error.message}</p>`;
             }
@@ -148,6 +156,23 @@
                 }
             }
 
+            // Prüfen auf Unlösbarkeit oder Unbestimmtheit
+            for (let i = 0; i < numVariables; i++) {
+                let allZeros = true;
+                for (let j = 0; j < numVariables; j++) {
+                    if (matrix[i][j] !== 0) {
+                        allZeros = false;
+                        break;
+                    }
+                }
+                if (allZeros && matrix[i][numVariables] !== 0) {
+                    return { status: "no solution" };
+                }
+                if (allZeros && matrix[i][numVariables] === 0) {
+                    return { status: "infinite" };
+                }
+            }
+
             // Rückwärtssubstitution
             const result = new Array(numVariables).fill(0);
             for (let i = numVariables - 1; i >= 0; i--) {
@@ -156,11 +181,11 @@
                     sum += matrix[i][j] * result[j];
                 }
                 if (matrix[i][i] === 0) {
-                    throw new Error("Das Gleichungssystem hat keine eindeutige Lösung.");
+                    return { status: "infinite" };
                 }
                 result[i] = (matrix[i][numVariables] - sum) / matrix[i][i];
             }
-            return result;
+            return { status: "unique", solution: result };
         }
     </script>
 </body>
