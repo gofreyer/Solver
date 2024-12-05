@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lineares Gleichungssystem lösen</title>
+    <title>Gauß-Verfahren mit Matrizen</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,7 +12,7 @@
             margin: 20px;
             text-align: center;
         }
-        h1 {
+        h1, h2, h3 {
             color: #444;
         }
         .container {
@@ -20,18 +20,12 @@
             max-width: 800px;
             margin: 0 auto;
         }
-        .table-container {
-            margin-top: 20px;
-        }
         table {
             border-collapse: collapse;
-            width: 100%;
-            margin: 10px 0;
-        }
-        table, th, td {
-            border: 1px solid #ccc;
+            margin: 10px auto;
         }
         th, td {
+            border: 1px solid #ccc;
             padding: 10px;
             text-align: center;
         }
@@ -61,26 +55,40 @@
         .error {
             color: red;
         }
+        .matrix-step {
+            margin: 20px 0;
+        }
+        .matrix-step table {
+            margin: 10px auto;
+        }
+        .highlight {
+            background-color: #ffeb3b;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Lineares Gleichungssystem lösen</h1>
+        <h1>Gauß-Verfahren mit Matrizen</h1>
         <label for="numVariables">Anzahl der Variablen:</label>
-        <input type="number" id="numVariables" min="1" max="9" value="3">
+        <input type="number" id="numVariables" min="1" max="5" value="3">
         <button onclick="generateTable()">Matrix erstellen</button>
 
         <div class="table-container" id="tableContainer"></div>
         <button onclick="solveSystem()">Lösen</button>
+        <button onclick="showSteps()" style="display: none;" id="showStepsButton">Zwischenschritte anzeigen</button>
 
         <div class="results" id="results"></div>
+        <div class="steps-container" id="stepsContainer"></div>
     </div>
 
     <script>
+        let gaussSteps = []; // Zwischenschritte der Matrizen
+        let gaussOperations = []; // Speichert die Operationen, die ausgeführt wurden
+
         function generateTable() {
             const numVariables = parseInt(document.getElementById("numVariables").value);
-            if (numVariables < 1 || numVariables > 9) {
-                alert("Die Anzahl der Variablen muss zwischen 1 und 9 liegen.");
+            if (numVariables < 1 || numVariables > 5) {
+                alert("Die Anzahl der Variablen muss zwischen 1 und 5 liegen.");
                 return;
             }
 
@@ -99,11 +107,15 @@
             html += '</tbody></table>';
             document.getElementById("tableContainer").innerHTML = html;
             document.getElementById("results").innerHTML = '';
+            document.getElementById("stepsContainer").innerHTML = '';
+            document.getElementById("showStepsButton").style.display = 'none';
         }
 
         function solveSystem() {
             const numVariables = parseInt(document.getElementById("numVariables").value);
             const matrix = [];
+            gaussSteps = []; // Reset the steps
+            gaussOperations = []; // Reset the operations
 
             // Lesen der Matrixwerte
             for (let i = 0; i < numVariables; i++) {
@@ -123,6 +135,7 @@
                         resultHtml += `<p>x${i + 1} = ${result.solution[i].toFixed(4)}</p>`;
                     }
                     document.getElementById("results").innerHTML = resultHtml;
+                    document.getElementById("showStepsButton").style.display = 'block';
                 } else if (result.status === "infinite") {
                     document.getElementById("results").innerHTML = 
                         `<p class="error">Das Gleichungssystem hat unendlich viele Lösungen.</p>`;
@@ -136,9 +149,7 @@
         }
 
         function gaussianElimination(matrix, numVariables) {
-            // Gauß-Elimination
             for (let i = 0; i < numVariables; i++) {
-                // Pivotisieren
                 let maxRow = i;
                 for (let k = i + 1; k < numVariables; k++) {
                     if (Math.abs(matrix[k][i]) > Math.abs(matrix[maxRow][i])) {
@@ -147,45 +158,47 @@
                 }
                 [matrix[i], matrix[maxRow]] = [matrix[maxRow], matrix[i]];
 
-                // Nullstellen erzeugen
+                gaussSteps.push(JSON.parse(JSON.stringify(matrix)));
+                gaussOperations.push(`Zeile ${i + 1} und Zeile ${maxRow + 1} wurden vertauscht`);
+
                 for (let k = i + 1; k < numVariables; k++) {
                     const factor = matrix[k][i] / matrix[i][i];
                     for (let j = i; j <= numVariables; j++) {
                         matrix[k][j] -= factor * matrix[i][j];
                     }
+                    gaussSteps.push(JSON.parse(JSON.stringify(matrix)));
+                    gaussOperations.push(
+                        `Zeile ${k + 1} wird angepasst: Z${k + 1} = Z${k + 1} - (${factor.toFixed(2)} * Z${i + 1})`
+                    );
                 }
             }
 
-            // Prüfen auf Unlösbarkeit oder Unbestimmtheit
-            for (let i = 0; i < numVariables; i++) {
-                let allZeros = true;
-                for (let j = 0; j < numVariables; j++) {
-                    if (matrix[i][j] !== 0) {
-                        allZeros = false;
-                        break;
-                    }
-                }
-                if (allZeros && matrix[i][numVariables] !== 0) {
-                    return { status: "no solution" };
-                }
-                if (allZeros && matrix[i][numVariables] === 0) {
-                    return { status: "infinite" };
-                }
-            }
-
-            // Rückwärtssubstitution
             const result = new Array(numVariables).fill(0);
             for (let i = numVariables - 1; i >= 0; i--) {
                 let sum = 0;
                 for (let j = i + 1; j < numVariables; j++) {
                     sum += matrix[i][j] * result[j];
                 }
-                if (matrix[i][i] === 0) {
-                    return { status: "infinite" };
-                }
                 result[i] = (matrix[i][numVariables] - sum) / matrix[i][i];
             }
             return { status: "unique", solution: result };
+        }
+
+        function showSteps() {
+            const container = document.getElementById("stepsContainer");
+            container.innerHTML = '<h2>Zwischenschritte:</h2>';
+            gaussSteps.forEach((step, index) => {
+                let html = `<div class="matrix-step"><h3>Schritt ${index + 1}: ${gaussOperations[index]}</h3><table>`;
+                step.forEach(row => {
+                    html += '<tr>';
+                    row.forEach(value => {
+                        html += `<td>${value.toFixed(2)}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</table></div>';
+                container.innerHTML += html;
+            });
         }
     </script>
 </body>
